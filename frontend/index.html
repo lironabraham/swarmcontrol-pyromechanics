@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SwarmControl: PyroMechanics</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <main id="viewport">
+      <canvas id="canvas" width="600" height="600"></canvas>
+      <div id="status-bar">
+        <span id="status-conn">connecting&hellip;</span>
+        <span id="status-tick">tick 0</span>
+        <span id="status-fps">0 fps</span>
+      </div>
+    </main>
+
+    <aside id="hud">
+      <h1>SwarmControl</h1>
+      <h2>PyroMechanics</h2>
+
+      <section class="panel">
+        <h3>World</h3>
+        <div class="row"><span>Wind</span><span id="hud-wind">&mdash;</span></div>
+        <div class="row"><span>Active fires</span><span id="hud-fires">0</span></div>
+        <div class="row"><span>Ignited</span><span id="hud-ignited">0</span></div>
+        <div class="row"><span>Ash</span><span id="hud-ash">0</span></div>
+      </section>
+
+      <section class="panel">
+        <h3>Fleet</h3>
+        <div class="row"><span>Autonomous</span><span id="hud-auto">0</span></div>
+        <div class="row"><span>Manual</span><span id="hud-manual">0</span></div>
+        <div class="row"><span>Retreating</span><span id="hud-retreat">0</span></div>
+      </section>
+
+      <section class="panel">
+        <h3>Selection</h3>
+        <div id="hud-selection">none</div>
+        <div id="hud-groups">
+          <span data-g="1">1:&mdash;</span>
+          <span data-g="2">2:&mdash;</span>
+          <span data-g="3">3:&mdash;</span>
+          <span data-g="4">4:&mdash;</span>
+          <span data-g="5">5:&mdash;</span>
+        </div>
+      </section>
+
+      <section class="panel hotkeys">
+        <h3>Hotkeys</h3>
+        <ul>
+          <li><kbd>LMB</kbd> select drone</li>
+          <li><kbd>RMB</kbd> target cell</li>
+          <li><kbd>F2</kbd> select all</li>
+          <li><kbd>Ctrl</kbd>+<kbd>1-5</kbd> bind group</li>
+          <li><kbd>1-5</kbd> recall group</li>
+          <li><kbd>A</kbd> autonomous</li>
+          <li><kbd>R</kbd> recall base</li>
+        </ul>
+      </section>
+    </aside>
+
+    <footer id="selection-card">
+      <div id="selection-empty">no selection</div>
+      <div id="selection-detail" hidden></div>
+    </footer>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>

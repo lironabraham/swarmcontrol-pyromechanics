@@ -1,0 +1,29 @@
+{
+  "world": {
+    "size": 50,
+    "tick_rate_hz": 30,
+    "wind": { "dx": 1.0, "dy": -1.0 },
+    "base_ignition_rate": 0.55,
+    "burn_rate": 0.06,
+    "ignition_threshold": 80.0,
+    "seed": 1337
+  },
+  "fuel": {
+    "fuel_density": 0.85,
+    "fuel_type": 2,
+    "moisture": 0.08,
+    "temperature": 22.0
+  },
+  "ignitions": [{ "x": 25, "y": 25 }],
+  "base": { "x": 0.0, "y": 0.0, "refill_radius": 1.5 },
+  "drones": {
+    "count": 10,
+    "speed": 6.0,
+    "battery_drain_per_sec": 0.35,
+    "water_dump_per_sec": 30.0,
+    "max_battery": 100.0,
+    "max_water": 100.0,
+    "extinguish_radius": 0.9,
+    "safety_factor": 1.35
+  }
+}
