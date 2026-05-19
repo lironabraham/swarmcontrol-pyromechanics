@@ -23,8 +23,8 @@ frontend/
 
 ## Wire Protocol
 
-Binary frame (LE): `[tick u32][size u16][metaLen u16][2500B state][2500B intensity][meta JSON]`  
-Commands (JSON text): `{"cmd":"target"|"autonomous"|"recall", "drone_ids":[...], "x":?, "y":?}`
+Binary frame (LE): `[tick u32][size u16][metaLen u16][2500B state][2500B intensity][2500B fuel][meta JSON]`  
+Commands (JSON text): `{"cmd":"target"|"autonomous"|"recall"|"pause_toggle"|"restart"|"spawn_fire"|"buy_drone", ...}`
 
 ## Invariants — Never Break
 
@@ -43,8 +43,10 @@ sticky swarm assignment, pixel-space hit-test, seeded RNG, pinned deps
 
 ## Controls
 
-`LMB` select drone · `RMB` target cell · `F2` select all · `Ctrl+1-5` bind group ·
-`1-5` recall group · `A` autonomous · `R` retreat to base. No drag-box selection.
+`LMB` select / drag-box · `RMB` target cell · `Shift+RMB` spawn fire ·
+`F2` select all · `Ctrl+1-5` bind group · `1-5` recall group ·
+`A` autonomous · `R` retreat to base · `B` buy drone (10cr) ·
+`Space` pause/resume · `Ctrl+R` restart
 
 ## Deployment (2026-05-19)
 
@@ -54,12 +56,16 @@ sticky swarm assignment, pixel-space hit-test, seeded RNG, pinned deps
 - **Port**: HF injects `PORT=7860`; `run.py` reads it from env. Local default is 8000.
 - Push workflow: `git push origin master` → Action triggers → deploys to HF automatically
 
-## Next Session — Features to Build (agreed, in priority order)
+## Wire Protocol (updated 2026-05-19)
 
-1. **Pause / Resume** — `Space` key; tick loop skips world+fleet step but keeps broadcasting
-2. **Restart** — `Ctrl+R`; reinitializes World + Fleet from config, resets tick
-3. **Spawn fire** — `Shift+RMB` on any cell sends `{"cmd":"spawn_fire","x":N,"y":N}`
-4. **Box-drag selection** — `LMB` drag draws selection rect; releases select all drones inside (user confirmed they want this)
-5. **Buy more drones** — credits earned per suppressed fire cell; spend to spawn drone at base; max configurable
-6. **Better graphics** — fuel-density green shading, 5-stop fire gradient, smoke particles (capped 60), water spray arc on active drones, glow when battery low
-7. **Room system** — private rooms with 6-char codes + share links (foundation for multiplayer later)
+Binary frame (LE): `[tick u32][size u16][metaLen u16][2500B state][2500B intensity][2500B fuel][meta JSON]`
+
+Meta JSON now includes: `paused: bool`, `credits: int` (in addition to existing fields).
+
+## Economy
+
+`CREDITS_PER_EXTINGUISH = 5` · `BUY_DRONE_COST = 10` · `max_drones = 20` (config override: `drones.max_drones`)
+
+## Next Session — Features to Build
+
+1. **Room system** — private rooms with 6-char codes + share links (foundation for multiplayer later)

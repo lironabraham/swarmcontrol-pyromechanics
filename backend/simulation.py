@@ -9,6 +9,9 @@ from .agent_logic import Fleet
 from .enums import CellState
 from .world import World
 
+BUY_DRONE_COST = 10
+CREDITS_PER_EXTINGUISH = 5
+
 
 class Simulation:
     """Owns the world, fleet, command queue and broadcast fan-out."""
@@ -20,9 +23,24 @@ class Simulation:
         self.world = World(self.cfg, self.rng)
         self.fleet = Fleet(self.cfg, self.world)
         self.tick = 0
+        self.credits = 0
+        self.paused = False
         self.command_queue: asyncio.Queue = asyncio.Queue()
         self.subscribers: set = set()
         self._stopped = False
+
+    def _reset(self):
+        self.rng = np.random.default_rng(int(self.cfg["world"]["seed"]))
+        self.world = World(self.cfg, self.rng)
+        self.fleet = Fleet(self.cfg, self.world)
+        self.tick = 0
+        self.credits = 0
+        self.paused = False
+        while not self.command_queue.empty():
+            try:
+                self.command_queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
 
     async def submit_command(self, cmd):
         await self.command_queue.put(cmd)
@@ -50,6 +68,15 @@ class Simulation:
                 self.fleet.cmd_autonomous(ids)
             elif kind == "recall":
                 self.fleet.cmd_recall(ids)
+            elif kind == "pause_toggle":
+                self.paused = not self.paused
+            elif kind == "restart":
+                self._reset()
+            elif kind == "spawn_fire":
+                self.world._ignite_cell(int(cmd.get("x", 0)), int(cmd.get("y", 0)))
+            elif kind == "buy_drone":
+                if self.credits >= BUY_DRONE_COST and self.fleet.buy_drone():
+                    self.credits -= BUY_DRONE_COST
         except (KeyError, TypeError, ValueError):
             return
 
@@ -71,9 +98,11 @@ class Simulation:
                 except asyncio.QueueEmpty:
                     break
 
-            self.world.step()
-            self.fleet.step(self.world.dt)
-            self.tick += 1
+            if not self.paused:
+                self.world.step()
+                extinguished = self.fleet.step(self.world.dt)
+                self.credits += extinguished * CREDITS_PER_EXTINGUISH
+                self.tick += 1
 
             payload = self._build_payload()
             for q in list(self.subscribers):
@@ -88,7 +117,7 @@ class Simulation:
                     pass
 
     def _build_payload(self):
-        state_bytes, intensity_bytes = self.world.serialize_grid()
+        state_bytes, intensity_bytes, fuel_bytes = self.world.serialize_grid()
         meta = {
             "wind": {
                 "dx": float(self.world.wind[0]),
@@ -99,7 +128,9 @@ class Simulation:
             "ignited": int((self.world.state == CellState.IGNITED).sum()),
             "ash": int((self.world.state == CellState.ASH).sum()),
             "base": {"x": self.fleet.base[0], "y": self.fleet.base[1]},
+            "paused": self.paused,
+            "credits": self.credits,
         }
         meta_bytes = json.dumps(meta, separators=(",", ":")).encode("utf-8")
         header = struct.pack("<IHH", self.tick, self.world.size, len(meta_bytes))
-        return header + state_bytes + intensity_bytes + meta_bytes
+        return header + state_bytes + intensity_bytes + fuel_bytes + meta_bytes

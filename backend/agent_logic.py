@@ -37,6 +37,7 @@ class Fleet:
         self.refill_r = float(cfg["base"]["refill_radius"])
 
         count = int(d["count"])
+        self.max_drones = int(d.get("max_drones", 20))
         self.drones = []
         for i in range(count):
             angle = (i / max(1, count)) * (math.pi * 0.5)
@@ -94,10 +95,24 @@ class Fleet:
         time_to_base = dist / max(self.speed, 0.01)
         return time_to_base * self.drain * self.safety + 1.0
 
+    def buy_drone(self):
+        if len(self.drones) >= self.max_drones:
+            return False
+        new_id = len(self.drones)
+        angle = (new_id / max(1, 10)) * (math.pi * 0.5)
+        x = self.base[0] + math.cos(angle) * 1.4
+        y = self.base[1] + math.sin(angle) * 1.4
+        self.drones.append(
+            Drone(id=new_id, x=x, y=y, battery=self.max_battery, water=self.max_water)
+        )
+        return True
+
     def step(self, dt):
         self._assign_autonomous_targets()
+        extinguished = 0
         for d in self.drones:
-            self._step_drone(d, dt)
+            extinguished += self._step_drone(d, dt)
+        return extinguished
 
     def _assign_autonomous_targets(self):
         fire_ys, fire_xs = self.world.fire_cells()
@@ -174,18 +189,22 @@ class Fleet:
                 d.has_target = False
                 d.vx = 0.0
                 d.vy = 0.0
-            return
+            return 0
 
+        extinguished = 0
         if d.has_target and d.water > 0.0:
             if math.hypot(d.x - d.target_x, d.y - d.target_y) <= self.extinguish_radius:
                 used = min(self.dump_rate * dt, d.water)
-                self.world.douse(d.x, d.y, used)
+                result = self.world.douse(d.x, d.y, used)
+                if result == 1:
+                    extinguished = 1
                 d.water -= used
                 tx, ty = int(d.target_x), int(d.target_y)
                 if not self.world.is_burning(tx, ty):
                     d.has_target = False
                     if d.state == int(DroneState.MANUAL_WAYPOINT):
                         d.state = int(DroneState.AUTONOMOUS_SWARM)
+        return extinguished
 
     def serialize(self):
         out = []

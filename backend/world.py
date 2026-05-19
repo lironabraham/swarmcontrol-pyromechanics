@@ -56,20 +56,21 @@ class World:
                 self.temperature[y, x] = self.ignition_threshold + 60.0
 
     def douse(self, x, y, amount):
-        """Apply `amount` water at floating-point (x,y). Returns True if a
-        burning cell was hit."""
+        """Apply `amount` water at floating-point (x,y). Returns 1 if the cell
+        was fully extinguished, 0 if hit but still burning, -1 if not burning."""
         ix, iy = int(x), int(y)
         if not (0 <= ix < self.size and 0 <= iy < self.size):
-            return False
+            return -1
         s = int(self.state[iy, ix])
         if s not in (CellState.IGNITED, CellState.ACTIVE_FIRE):
-            return False
+            return -1
         self.temperature[iy, ix] -= amount * 5.0
         self.moisture[iy, ix] = min(1.0, float(self.moisture[iy, ix]) + amount * 0.02)
         if self.temperature[iy, ix] < self.ignition_threshold * 0.5:
             self.state[iy, ix] = CellState.UNBURNED
             self.temperature[iy, ix] = self.ambient_temp
-        return True
+            return 1
+        return 0
 
     def step(self):
         dt = self.dt
@@ -134,4 +135,5 @@ class World:
 
     def serialize_grid(self):
         intensity = np.clip(self.temperature * 0.25, 0.0, 255.0).astype(np.uint8)
-        return self.state.tobytes(), intensity.tobytes()
+        fuel = np.clip(self.fuel_density * 255.0, 0.0, 255.0).astype(np.uint8)
+        return self.state.tobytes(), intensity.tobytes(), fuel.tobytes()
