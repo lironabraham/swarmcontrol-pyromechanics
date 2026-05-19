@@ -45,3 +45,21 @@ sticky swarm assignment, pixel-space hit-test, seeded RNG, pinned deps
 
 `LMB` select drone · `RMB` target cell · `F2` select all · `Ctrl+1-5` bind group ·
 `1-5` recall group · `A` autonomous · `R` retreat to base. No drag-box selection.
+
+## Deployment (2026-05-19)
+
+- **GitHub**: https://github.com/lironabraham/swarmcontrol-pyromechanics
+- **Live URL**: https://lironabraham-swarmcontrol-pyromechanics.hf.space (Hugging Face Spaces, free, always-on)
+- **CI**: GitHub Action (`.github/workflows/deploy.yml`) auto-pushes `master:main` to HF on every push to `master`
+- **Port**: HF injects `PORT=7860`; `run.py` reads it from env. Local default is 8000.
+- Push workflow: `git push origin master` → Action triggers → deploys to HF automatically
+
+## Next Session — Features to Build (agreed, in priority order)
+
+1. **Pause / Resume** — `Space` key; tick loop skips world+fleet step but keeps broadcasting
+2. **Restart** — `Ctrl+R`; reinitializes World + Fleet from config, resets tick
+3. **Spawn fire** — `Shift+RMB` on any cell sends `{"cmd":"spawn_fire","x":N,"y":N}`
+4. **Box-drag selection** — `LMB` drag draws selection rect; releases select all drones inside (user confirmed they want this)
+5. **Buy more drones** — credits earned per suppressed fire cell; spend to spawn drone at base; max configurable
+6. **Better graphics** — fuel-density green shading, 5-stop fire gradient, smoke particles (capped 60), water spray arc on active drones, glow when battery low
+7. **Room system** — private rooms with 6-char codes + share links (foundation for multiplayer later)
