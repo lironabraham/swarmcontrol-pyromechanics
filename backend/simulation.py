@@ -15,8 +15,8 @@ CREDITS_PER_EXTINGUISH = 5
 LEVELS = [
     {
         "label": "Smoldering",
-        "ignitions": [{"x": 25, "y": 25}],
-        "world_overrides": {"wind": {"dx": 0.5, "dy": -0.3}, "base_ignition_rate": 0.40},
+        "ignitions": [{"x": 8, "y": 8}],
+        "world_overrides": {"wind": {"dx": 0.5, "dy": -0.3}, "base_ignition_rate": 0.25},
         "fuel_overrides": {"moisture": 0.15},
         "drone_count": 10,
         "lose_ash_threshold": 800,
@@ -24,7 +24,7 @@ LEVELS = [
     {
         "label": "Rising Heat",
         "ignitions": [{"x": 25, "y": 25}, {"x": 15, "y": 15}],
-        "world_overrides": {"wind": {"dx": 1.2, "dy": -0.8}, "base_ignition_rate": 0.55},
+        "world_overrides": {"wind": {"dx": 1.2, "dy": -0.8}, "base_ignition_rate": 0.40},
         "fuel_overrides": {"moisture": 0.08},
         "drone_count": 10,
         "lose_ash_threshold": 600,

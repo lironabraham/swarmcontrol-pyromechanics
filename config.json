@@ -22,8 +22,8 @@
     "battery_drain_per_sec": 0.35,
     "water_dump_per_sec": 30.0,
     "max_battery": 100.0,
-    "max_water": 100.0,
-    "extinguish_radius": 0.9,
+    "max_water": 200.0,
+    "extinguish_radius": 1.5,
     "safety_factor": 1.35
   }
 }
