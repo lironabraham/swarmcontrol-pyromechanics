@@ -1,3 +1,13 @@
+---
+title: SwarmControl PyroMechanics
+emoji: 🔥
+colorFrom: red
+colorTo: orange
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # SwarmControl: PyroMechanics
 
 Offline, deterministic wildfire-suppression RTS simulation. Python backend (FastAPI + NumPy)
