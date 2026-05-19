@@ -33,7 +33,7 @@
     level_label: "Smoldering",
     game_status: "playing",
     lose_ash_threshold: 800,
-    levelStartTime: performance.now(),
+    levelStartTime: null,
   };
 
   const drag = { active: false, x0: 0, y0: 0, x1: 0, y1: 0 };
@@ -92,7 +92,7 @@
     state.paused = meta.paused;
     state.credits = meta.credits;
 
-    if (meta.level !== state.level) {
+    if (state.levelStartTime === null || meta.level !== state.level) {
       state.levelStartTime = performance.now();
     }
     state.level = meta.level;
@@ -199,6 +199,7 @@
   }
 
   function drawLevelCard() {
+    if (state.levelStartTime === null) return;
     const elapsed = performance.now() - state.levelStartTime;
     if (elapsed > 2500) return;
     const alpha = elapsed < 400 ? elapsed / 400 : Math.max(0, 1 - (elapsed - 1800) / 700);
@@ -251,7 +252,7 @@
       CANVAS_PX / 2, CANVAS_PX / 2 + 6
     );
     ctx.fillStyle = "#60a5fa";
-    ctx.fillText("Ctrl+R → Retry this level", CANVAS_PX / 2, CANVAS_PX / 2 + 38);
+    ctx.fillText("Space / Ctrl+R → Retry this level", CANVAS_PX / 2, CANVAS_PX / 2 + 38);
     ctx.textAlign = "left";
   }
 
@@ -595,6 +596,8 @@
       ev.preventDefault();
       if (state.game_status === "won" && state.level < 3) {
         sendCommand({ cmd: "next_level" });
+      } else if (state.game_status === "lost") {
+        sendCommand({ cmd: "restart" });
       } else if (state.game_status === "playing") {
         sendCommand({ cmd: "pause_toggle" });
       }
