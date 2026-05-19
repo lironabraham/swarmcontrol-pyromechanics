@@ -12,6 +12,44 @@ from .world import World
 BUY_DRONE_COST = 10
 CREDITS_PER_EXTINGUISH = 5
 
+LEVELS = [
+    {
+        "label": "Smoldering",
+        "ignitions": [{"x": 25, "y": 25}],
+        "world_overrides": {"wind": {"dx": 0.5, "dy": -0.3}, "base_ignition_rate": 0.40},
+        "fuel_overrides": {"moisture": 0.15},
+        "drone_count": 10,
+        "lose_ash_threshold": 800,
+    },
+    {
+        "label": "Rising Heat",
+        "ignitions": [{"x": 25, "y": 25}, {"x": 15, "y": 15}],
+        "world_overrides": {"wind": {"dx": 1.2, "dy": -0.8}, "base_ignition_rate": 0.55},
+        "fuel_overrides": {"moisture": 0.08},
+        "drone_count": 10,
+        "lose_ash_threshold": 600,
+    },
+    {
+        "label": "Inferno",
+        "ignitions": [{"x": 25, "y": 25}, {"x": 15, "y": 15}, {"x": 35, "y": 35}],
+        "world_overrides": {"wind": {"dx": 2.0, "dy": -1.5}, "base_ignition_rate": 0.75},
+        "fuel_overrides": {"moisture": 0.04},
+        "drone_count": 12,
+        "lose_ash_threshold": 450,
+    },
+    {
+        "label": "Wildfire",
+        "ignitions": [
+            {"x": 25, "y": 25}, {"x": 10, "y": 10},
+            {"x": 40, "y": 40}, {"x": 15, "y": 40},
+        ],
+        "world_overrides": {"wind": {"dx": 2.5, "dy": -2.0}, "base_ignition_rate": 1.1},
+        "fuel_overrides": {"moisture": 0.02},
+        "drone_count": 14,
+        "lose_ash_threshold": 350,
+    },
+]
+
 
 class Simulation:
     """Owns the world, fleet, command queue and broadcast fan-out."""
@@ -19,9 +57,13 @@ class Simulation:
     def __init__(self, config_path):
         with open(config_path, "r", encoding="utf-8") as f:
             self.cfg = json.load(f)
-        self.rng = np.random.default_rng(int(self.cfg["world"]["seed"]))
-        self.world = World(self.cfg, self.rng)
-        self.fleet = Fleet(self.cfg, self.world)
+        self.level_idx = 0
+        self.game_status = "playing"
+        self.lose_ash_threshold = LEVELS[0]["lose_ash_threshold"]
+        level_cfg = self._build_level_cfg(0)
+        self.rng = np.random.default_rng(int(level_cfg["world"]["seed"]))
+        self.world = World(level_cfg, self.rng)
+        self.fleet = Fleet(level_cfg, self.world)
         self.tick = 0
         self.credits = 0
         self.paused = False
@@ -29,10 +71,29 @@ class Simulation:
         self.subscribers: set = set()
         self._stopped = False
 
-    def _reset(self):
-        self.rng = np.random.default_rng(int(self.cfg["world"]["seed"]))
-        self.world = World(self.cfg, self.rng)
-        self.fleet = Fleet(self.cfg, self.world)
+    def _build_level_cfg(self, level_idx: int) -> dict:
+        level = LEVELS[level_idx]
+        cfg = json.loads(json.dumps(self.cfg))
+        for k, v in level["world_overrides"].items():
+            if k == "wind" and isinstance(v, dict):
+                cfg["world"]["wind"].update(v)
+            else:
+                cfg["world"][k] = v
+        for k, v in level["fuel_overrides"].items():
+            cfg["fuel"][k] = v
+        cfg["ignitions"] = list(level["ignitions"])
+        cfg["drones"]["count"] = level["drone_count"]
+        return cfg
+
+    def _reset(self, level_idx=None):
+        if level_idx is not None:
+            self.level_idx = level_idx
+        self.game_status = "playing"
+        self.lose_ash_threshold = LEVELS[self.level_idx]["lose_ash_threshold"]
+        level_cfg = self._build_level_cfg(self.level_idx)
+        self.rng = np.random.default_rng(int(level_cfg["world"]["seed"]))
+        self.world = World(level_cfg, self.rng)
+        self.fleet = Fleet(level_cfg, self.world)
         self.tick = 0
         self.credits = 0
         self.paused = False
@@ -69,9 +130,14 @@ class Simulation:
             elif kind == "recall":
                 self.fleet.cmd_recall(ids)
             elif kind == "pause_toggle":
-                self.paused = not self.paused
+                if self.game_status == "playing":
+                    self.paused = not self.paused
             elif kind == "restart":
                 self._reset()
+            elif kind == "next_level":
+                next_idx = self.level_idx + 1
+                if self.game_status == "won" and next_idx < len(LEVELS):
+                    self._reset(next_idx)
             elif kind == "spawn_fire":
                 self.world._ignite_cell(int(cmd.get("x", 0)), int(cmd.get("y", 0)))
             elif kind == "buy_drone":
@@ -104,6 +170,33 @@ class Simulation:
                 self.credits += extinguished * CREDITS_PER_EXTINGUISH
                 self.tick += 1
 
+                if self.game_status == "playing":
+                    active = int((self.world.state == CellState.ACTIVE_FIRE).sum())
+                    ignited = int((self.world.state == CellState.IGNITED).sum())
+                    ash = int((self.world.state == CellState.ASH).sum())
+
+                    if active == 0 and ignited == 0:
+                        self.game_status = "won"
+                        self.paused = True
+                    elif ash >= self.lose_ash_threshold:
+                        self.game_status = "lost"
+                        self.paused = True
+                    else:
+                        bx, by = int(self.fleet.base[0]), int(self.fleet.base[1])
+                        N = self.world.size
+                        for dy in range(-2, 3):
+                            for dx in range(-2, 3):
+                                nx, ny = bx + dx, by + dy
+                                if 0 <= nx < N and 0 <= ny < N:
+                                    if self.world.state[ny, nx] in (
+                                        CellState.ACTIVE_FIRE, CellState.IGNITED
+                                    ):
+                                        self.game_status = "lost"
+                                        self.paused = True
+                                        break
+                            if self.game_status == "lost":
+                                break
+
             payload = self._build_payload()
             for q in list(self.subscribers):
                 if q.full():
@@ -130,6 +223,10 @@ class Simulation:
             "base": {"x": self.fleet.base[0], "y": self.fleet.base[1]},
             "paused": self.paused,
             "credits": self.credits,
+            "level": self.level_idx,
+            "level_label": LEVELS[self.level_idx]["label"],
+            "game_status": self.game_status,
+            "lose_ash_threshold": self.lose_ash_threshold,
         }
         meta_bytes = json.dumps(meta, separators=(",", ":")).encode("utf-8")
         header = struct.pack("<IHH", self.tick, self.world.size, len(meta_bytes))

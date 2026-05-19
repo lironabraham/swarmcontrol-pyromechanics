@@ -29,13 +29,16 @@
     fps: 0,
     paused: false,
     credits: 0,
+    level: 0,
+    level_label: "Smoldering",
+    game_status: "playing",
+    lose_ash_threshold: 800,
+    levelStartTime: performance.now(),
   };
 
-  // drag-box selection state
   const drag = { active: false, x0: 0, y0: 0, x1: 0, y1: 0 };
   let dragStartPx = null;
 
-  // smoke particles
   const particles = [];
   let lastRenderTime = 0;
 
@@ -89,6 +92,14 @@
     state.paused = meta.paused;
     state.credits = meta.credits;
 
+    if (meta.level !== state.level) {
+      state.levelStartTime = performance.now();
+    }
+    state.level = meta.level;
+    state.level_label = meta.level_label;
+    state.game_status = meta.game_status;
+    state.lose_ash_threshold = meta.lose_ash_threshold;
+
     const now = performance.now();
     if (state.lastFrameAt) {
       const dt = now - state.lastFrameAt;
@@ -105,7 +116,6 @@
 
   // ── Color ──────────────────────────────────────────────────────────────────
 
-  // 5-stop fire gradient + fuel-density green shading for UNBURNED cells
   function colorForCell(s, intensity, fuel) {
     if (s === 0) {
       const l = 12 + (fuel / 255) * 16;
@@ -171,6 +181,80 @@
     }
   }
 
+  // ── Overlays ───────────────────────────────────────────────────────────────
+
+  function drawDangerVignette() {
+    const ratio = state.counts.ash / state.lose_ash_threshold;
+    if (ratio < 0.6) return;
+    const pulse = 0.35 + 0.25 * Math.sin(performance.now() / 280);
+    const alpha = ((ratio - 0.6) / 0.4) * pulse;
+    const grd = ctx.createRadialGradient(
+      CANVAS_PX / 2, CANVAS_PX / 2, CANVAS_PX * 0.3,
+      CANVAS_PX / 2, CANVAS_PX / 2, CANVAS_PX * 0.85
+    );
+    grd.addColorStop(0, "rgba(248,113,113,0)");
+    grd.addColorStop(1, `rgba(200,30,30,${alpha.toFixed(3)})`);
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, CANVAS_PX, CANVAS_PX);
+  }
+
+  function drawLevelCard() {
+    const elapsed = performance.now() - state.levelStartTime;
+    if (elapsed > 2500) return;
+    const alpha = elapsed < 400 ? elapsed / 400 : Math.max(0, 1 - (elapsed - 1800) / 700);
+    ctx.fillStyle = `rgba(0,0,0,${(0.65 * alpha).toFixed(3)})`;
+    ctx.fillRect(0, 0, CANVAS_PX, CANVAS_PX);
+    ctx.textAlign = "center";
+    ctx.fillStyle = `rgba(248,250,252,${alpha.toFixed(3)})`;
+    ctx.font = "bold 24px ui-monospace,monospace";
+    ctx.fillText(`Level ${state.level + 1}`, CANVAS_PX / 2, CANVAS_PX / 2 - 12);
+    ctx.font = "14px ui-monospace,monospace";
+    ctx.fillStyle = `rgba(156,163,175,${alpha.toFixed(3)})`;
+    ctx.fillText(state.level_label, CANVAS_PX / 2, CANVAS_PX / 2 + 14);
+    ctx.textAlign = "left";
+  }
+
+  function drawWinOverlay() {
+    ctx.fillStyle = "rgba(0,0,0,0.72)";
+    ctx.fillRect(0, 0, CANVAS_PX, CANVAS_PX);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#22c55e";
+    ctx.font = "bold 34px ui-monospace,monospace";
+    ctx.fillText("BASE SAVED", CANVAS_PX / 2, CANVAS_PX / 2 - 30);
+    ctx.font = "13px ui-monospace,monospace";
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillText(
+      `${state.tick} ticks · ${state.credits} credits · ${state.counts.ash} cells ash`,
+      CANVAS_PX / 2, CANVAS_PX / 2 + 6
+    );
+    ctx.fillStyle = "#60a5fa";
+    ctx.fillText(
+      state.level >= 3
+        ? "All levels complete!  Ctrl+R to replay"
+        : "Space → Next Level   ·   Ctrl+R → Retry",
+      CANVAS_PX / 2, CANVAS_PX / 2 + 38
+    );
+    ctx.textAlign = "left";
+  }
+
+  function drawLoseOverlay() {
+    ctx.fillStyle = "rgba(0,0,0,0.72)";
+    ctx.fillRect(0, 0, CANVAS_PX, CANVAS_PX);
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#ef4444";
+    ctx.font = "bold 34px ui-monospace,monospace";
+    ctx.fillText("BASE LOST", CANVAS_PX / 2, CANVAS_PX / 2 - 30);
+    ctx.font = "13px ui-monospace,monospace";
+    ctx.fillStyle = "#cbd5e1";
+    ctx.fillText(
+      `${state.counts.ash} / ${state.lose_ash_threshold} cells ash · ${state.tick} ticks`,
+      CANVAS_PX / 2, CANVAS_PX / 2 + 6
+    );
+    ctx.fillStyle = "#60a5fa";
+    ctx.fillText("Ctrl+R → Retry this level", CANVAS_PX / 2, CANVAS_PX / 2 + 38);
+    ctx.textAlign = "left";
+  }
+
   // ── Draw helpers ───────────────────────────────────────────────────────────
 
   function drawBase() {
@@ -194,7 +278,6 @@
     const selected = state.selection.has(d.id);
     const lowBat = d.battery < 25;
 
-    // red glow when battery critical
     if (lowBat) {
       const grd = ctx.createRadialGradient(px, py, 3, px, py, 18);
       grd.addColorStop(0, "rgba(248,113,113,0.45)");
@@ -213,7 +296,6 @@
       ctx.stroke();
     }
 
-    // water spray arc when actively dousing; waypoint line otherwise
     if (d.tx !== null && d.tx !== undefined) {
       const distGrid = Math.hypot(d.x - d.tx, d.y - d.ty);
       if (distGrid < 1.0 && d.water > 0) {
@@ -277,11 +359,14 @@
     document.getElementById("status-tick").textContent = `tick ${state.tick}`;
     document.getElementById("status-fps").textContent =
       `${state.fps.toFixed(0)} fps`;
+    document.getElementById("status-level").textContent =
+      `Lv${state.level + 1} ${state.level_label}`;
     document.getElementById("hud-wind").textContent =
       `(${state.wind.dx.toFixed(1)}, ${state.wind.dy.toFixed(1)})`;
     document.getElementById("hud-fires").textContent = state.counts.fires;
     document.getElementById("hud-ignited").textContent = state.counts.ignited;
-    document.getElementById("hud-ash").textContent = state.counts.ash;
+    document.getElementById("hud-ash-progress").textContent =
+      `${state.counts.ash} / ${state.lose_ash_threshold}`;
 
     let a = 0, m = 0, r = 0;
     for (const d of state.drones) {
@@ -294,6 +379,22 @@
     document.getElementById("hud-retreat").textContent = r;
     document.getElementById("hud-drone-count").textContent = state.drones.length;
     document.getElementById("hud-credits").textContent = state.credits;
+
+    // Buttons
+    const playing = state.game_status === "playing";
+    const buyBtn = document.getElementById("btn-buy");
+    buyBtn.disabled = !playing || state.credits < 10;
+    buyBtn.textContent = `+ Drone (10cr)`;
+
+    const pauseBtn = document.getElementById("btn-pause");
+    pauseBtn.disabled = !playing;
+    pauseBtn.textContent = state.paused ? "▶ Resume" : "⏸ Pause";
+
+    document.getElementById("btn-restart").textContent =
+      state.game_status === "won" ? "↩ Retry" : "↩ Restart";
+
+    const nextBtn = document.getElementById("btn-next");
+    nextBtn.hidden = state.game_status !== "won" || state.level >= 3;
 
     const sel = [...state.selection].sort((x, y) => x - y);
     document.getElementById("hud-selection").textContent = sel.length
@@ -384,7 +485,6 @@
     drawBase();
     for (const d of state.drones) drawDrone(d);
 
-    // drag-box overlay
     if (drag.active) {
       const x0 = Math.min(drag.x0, drag.x1);
       const y0 = Math.min(drag.y0, drag.y1);
@@ -399,8 +499,14 @@
       ctx.setLineDash([]);
     }
 
-    // pause overlay
-    if (state.paused) {
+    drawDangerVignette();
+    drawLevelCard();
+
+    if (state.game_status === "won") {
+      drawWinOverlay();
+    } else if (state.game_status === "lost") {
+      drawLoseOverlay();
+    } else if (state.paused) {
       ctx.fillStyle = "rgba(0,0,0,0.45)";
       ctx.fillRect(0, 0, CANVAS_PX, CANVAS_PX);
       ctx.fillStyle = "#f8fafc";
@@ -487,7 +593,11 @@
 
     if (ev.key === " ") {
       ev.preventDefault();
-      sendCommand({ cmd: "pause_toggle" });
+      if (state.game_status === "won" && state.level < 3) {
+        sendCommand({ cmd: "next_level" });
+      } else if (state.game_status === "playing") {
+        sendCommand({ cmd: "pause_toggle" });
+      }
       return;
     }
 
@@ -526,6 +636,25 @@
     } else if (k === "b") {
       sendCommand({ cmd: "buy_drone" });
     }
+  });
+
+  // ── Button wiring ──────────────────────────────────────────────────────────
+
+  document.getElementById("btn-buy").addEventListener("click", () => {
+    sendCommand({ cmd: "buy_drone" });
+  });
+  document.getElementById("btn-pause").addEventListener("click", () => {
+    sendCommand({ cmd: "pause_toggle" });
+  });
+  document.getElementById("btn-restart").addEventListener("click", () => {
+    sendCommand({ cmd: "restart" });
+  });
+  document.getElementById("btn-next").addEventListener("click", () => {
+    sendCommand({ cmd: "next_level" });
+  });
+  document.getElementById("btn-select-all").addEventListener("click", () => {
+    state.selection.clear();
+    for (const d of state.drones) state.selection.add(d.id);
   });
 
   connect();

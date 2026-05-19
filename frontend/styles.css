@@ -184,3 +184,27 @@ kbd {
 .state-0 { background: #1e3a2f; color: #4ade80; }
 .state-1 { background: #3a2a1e; color: #ffb24a; }
 .state-2 { background: #3a1e1e; color: #f87171; }
+
+.btn-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.btn {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid #2a3340;
+  border-radius: 3px;
+  background: #1c232c;
+  color: #cfd6df;
+  font: 11px/1.4 ui-monospace, monospace;
+  cursor: pointer;
+  transition: background 80ms;
+}
+.btn:hover:not(:disabled) { background: #263240; }
+.btn:disabled { opacity: 0.38; cursor: not-allowed; }
+.btn-green { border-color: #1e3a2f; color: #4ade80; }
+.btn-green:hover:not(:disabled) { background: #1e3a2f; }
+.btn-red { border-color: #3a1e1e; color: #f87171; }
+.btn-red:hover:not(:disabled) { background: #3a1e1e; }
+.status-level { color: #ffb24a; }

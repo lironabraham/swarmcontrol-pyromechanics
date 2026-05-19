@@ -14,6 +14,7 @@
         <span id="status-conn">connecting&hellip;</span>
         <span id="status-tick">tick 0</span>
         <span id="status-fps">0 fps</span>
+        <span id="status-level" class="status-level">Lv1 Smoldering</span>
       </div>
     </main>
 
@@ -26,7 +27,7 @@
         <div class="row"><span>Wind</span><span id="hud-wind">&mdash;</span></div>
         <div class="row"><span>Active fires</span><span id="hud-fires">0</span></div>
         <div class="row"><span>Ignited</span><span id="hud-ignited">0</span></div>
-        <div class="row"><span>Ash</span><span id="hud-ash">0</span></div>
+        <div class="row"><span>Ash / limit</span><span id="hud-ash-progress">0 / 800</span></div>
       </section>
 
       <section class="panel">
@@ -36,10 +37,21 @@
         <div class="row"><span>Manual</span><span id="hud-manual">0</span></div>
         <div class="row"><span>Retreating</span><span id="hud-retreat">0</span></div>
         <div class="row"><span>Credits</span><span id="hud-credits">0</span></div>
+        <div class="btn-row">
+          <button id="btn-buy" class="btn btn-green" disabled>+ Drone (10cr)</button>
+          <button id="btn-pause" class="btn">⏸ Pause</button>
+        </div>
+        <div class="btn-row">
+          <button id="btn-restart" class="btn btn-red">↩ Restart</button>
+          <button id="btn-next" class="btn btn-green" hidden>→ Next Level</button>
+        </div>
       </section>
 
       <section class="panel">
         <h3>Selection</h3>
+        <div class="btn-row">
+          <button id="btn-select-all" class="btn">Select All (F2)</button>
+        </div>
         <div id="hud-selection">none</div>
         <div id="hud-groups">
           <span data-g="1">1:&mdash;</span>
@@ -62,7 +74,7 @@
           <li><kbd>A</kbd> autonomous</li>
           <li><kbd>R</kbd> recall base</li>
           <li><kbd>B</kbd> buy drone (10cr)</li>
-          <li><kbd>Space</kbd> pause/resume</li>
+          <li><kbd>Space</kbd> pause / next level</li>
           <li><kbd>Ctrl+R</kbd> restart</li>
         </ul>
       </section>
